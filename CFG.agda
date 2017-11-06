@@ -31,11 +31,11 @@ private liftF2 : ∀ {a b c z} {A : Set a} {B : Set b} {C : Set c} {Z : Set z} �
 liftF2 _*_ f g z = f z * g z
 
 UntermBlock : ∀ {i} → (List Type → Type → Set i) → Set (ℓ ⊔ i)
-UntermBlock Instruction = ∃ λ { (nφs , φs) → All' (Instruction ∘ (flip L._++_ φs)) nφs }
+UntermBlock Instruction = ∃ λ { (non-φs , φs) → All' (Instruction ∘ (flip L._++_ φs)) non-φs }
 
 module Block {i} {Instruction : List Type → Type → Set i} where
     types : UntermBlock Instruction → List Type
-    types ((nφs , φs) , _) = nφs L.++ φs
+    types ((non-φs , φs) , _) = non-φs L.++ φs
 
     φTypes : UntermBlock Instruction → List Type
     φTypes ((_ , φs) , _) = φs
@@ -44,9 +44,11 @@ record Graph {ℓ' i t} {_≤_ : Rel Type ℓ'}
              (Instruction : List Type → Type → Set i)
              (Terminator  : List Type → ℕ → Set t) : Set (ℓ ⊔ ℓ' ⊔ suc (i ⊔ t)) where
   field untermBlocks : List (UntermBlock Instruction)
-        outEdges     : let open Block {Instruction = Instruction}
+        outEdges     : -- Outgoing edges from block, and source for each φ in target block
+                       let open Block {Instruction = Instruction}
                            _≥_ = flip _≤_
                        in φTypes ⟨ (liftF2 ∘′ L.liftRel* ∘ L.liftRel) _≥_ on L.map ⟩ types $
                           untermBlocks
-        terminators  : All (uncurry Terminator ∘
+        terminators  : -- Terminator for which number of outgoing edges is appropriate
+                       All (uncurry Terminator ∘
                             P.map id Data.List.Many.length) (L.unAll outEdges)
